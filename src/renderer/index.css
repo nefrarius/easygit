@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Scrollbar estilo terminal */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0e14;
+}
+::-webkit-scrollbar-thumb {
+  background: #525252;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #6c6c6c;
+}
+
+/* Drag region para titleBar de macOS */
+.drag-region {
+  -webkit-app-region: drag;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Animación de escritura */
+.typing-cursor::after {
+  content: '▊';
+  animation: blink 1s step-end infinite;
+  color: #b8cc52;
+}
+
+/* Transición suave para comandos */
+.command-enter {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+.command-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 0.15s ease-out;
+}
