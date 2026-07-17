@@ -42,6 +42,10 @@ contextBridge.exposeInMainWorld('easygit', {
     ipcRenderer.invoke('github:getReadme', owner, repo),
   githubGetContents: (owner, repo, path) =>
     ipcRenderer.invoke('github:getContents', owner, repo, path),
+  githubSearchRepos: (query, perPage) =>
+    ipcRenderer.invoke('github:searchRepos', query, perPage),
+  githubGetTrending: () =>
+    ipcRenderer.invoke('github:getTrending'),
   githubGetCommits: (owner, repo, perPage) =>
     ipcRenderer.invoke('github:getCommits', owner, repo, perPage),
 });

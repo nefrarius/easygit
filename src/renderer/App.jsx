@@ -7,11 +7,12 @@ import HistoryPanel from './components/HistoryPanel';
 import GitHubPanel from './components/GitHubPanel';
 import DiffViewer from './components/DiffViewer';
 import CommitGraph from './components/CommitGraph';
+import HomePage from './components/HomePage';
 
 export default function App() {
   const { state, setAll, setStatus, setBranches, executeCommand, executeGitCommand, addLog, approveCommand, rejectCommand } = useRepoStore();
   const { repoPath, status, branches } = state;
-  const [activeTab, setActiveTab] = useState('repo');
+  const [activeTab, setActiveTab] = useState('home');
   const [githubUser, setGithubUser] = useState(null);
   const [diffFile, setDiffFile] = useState(null);
   const [diffContent, setDiffContent] = useState('');
@@ -133,6 +134,7 @@ export default function App() {
   };
 
   const TABS = [
+    { id: 'home', label: 'Inicio' },
     { id: 'repo', label: 'Repo' },
     { id: 'graph', label: 'Graph' },
     { id: 'github', label: 'GitHub' },
@@ -186,7 +188,18 @@ export default function App() {
           {/* Content */}
           <div className="flex-1 flex overflow-hidden">
             <div className={`flex-1 overflow-auto ${diffContent ? 'w-1/2' : 'w-full'}`}>
-              {activeTab === 'repo' && (
+              {activeTab === 'home' && (
+                <HomePage
+                  githubUser={githubUser}
+                  onOpenRepo={(repo) => {
+                    setAll({ repoPath: null });
+                    setActiveTab('github');
+                  }}
+                  onSelectFolder={handleSelectFolder}
+                  onInitRepo={handleInitRepo}
+                />
+              )}
+              {activeTab === 'repo' && repoPath && (
                 <RepoPanel
                   repoPath={repoPath}
                   status={status}

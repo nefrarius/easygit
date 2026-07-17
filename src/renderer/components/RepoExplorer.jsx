@@ -98,6 +98,18 @@ export default function RepoExplorer({ repo }) {
           <a href={repo.html_url} target="_blank" rel="noreferrer"
             className="text-terminal-cyan hover:underline">Abrir en GitHub →</a>
         </div>
+        <div className="flex gap-2 mt-2">
+          <button onClick={() => navigator.clipboard.writeText(repo.clone_url)}
+            className="text-2xs px-2 py-1 border border-terminal-cyan/50 text-terminal-cyan rounded hover:bg-terminal-cyan/10 transition-colors">
+            📋 git clone {repo.clone_url}
+          </button>
+          {repo.ssh_url && (
+            <button onClick={() => navigator.clipboard.writeText(repo.ssh_url)}
+              className="text-2xs px-2 py-1 border border-terminal-dim/50 text-terminal-dim rounded hover:text-terminal-fg hover:border-terminal-fg transition-colors">
+              📋 SSH
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Breadcrumb */}
@@ -157,7 +169,7 @@ export default function RepoExplorer({ repo }) {
         <div>
           <h3 className="text-xs font-bold text-terminal-dim uppercase tracking-wider mb-2">README.md</h3>
           <div className="bg-terminal-highlight/30 border border-terminal-dim/20 rounded p-4">
-            <pre className="text-xs text-terminal-fg whitespace-pre-wrap font-mono leading-5 max-h-96 overflow-auto">
+            <pre className="text-xs text-terminal-fg whitespace-pre-wrap font-mono leading-5 overflow-auto">
               {readme.content_decoded}
             </pre>
           </div>

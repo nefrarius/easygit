@@ -233,6 +233,24 @@ ipcMain.handle('github:getContents', async (_event, owner, repo, path) => {
   }
 });
 
+ipcMain.handle('github:searchRepos', async (_event, query, perPage) => {
+  try {
+    const data = await githubService.searchRepos(query, perPage);
+    return { success: true, data };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('github:getTrending', async () => {
+  try {
+    const data = await githubService.getTrending();
+    return { success: true, data };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 ipcMain.handle('github:getCommits', async (_event, owner, repo, perPage) => {
   try {
     const data = await githubService.getCommits(owner, repo, perPage);

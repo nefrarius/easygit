@@ -152,6 +152,16 @@ async function getCommits(owner, repo, perPage = 20) {
   return _request('GET', `/repos/${owner}/${repo}/commits?per_page=${perPage}`);
 }
 
+async function searchRepos(query, perPage = 30) {
+  return _request('GET', `/search/repositories?q=${encodeURIComponent(query)}&per_page=${perPage}&sort=stars&order=desc`);
+}
+
+async function getTrending() {
+  // Search repos created in the last week, sorted by stars
+  const date = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  return _request('GET', `/search/repositories?q=created:>${date}&sort=stars&order=desc&per_page=15`);
+}
+
 module.exports = {
   setToken,
   getToken,
@@ -168,4 +178,6 @@ module.exports = {
   getReadme,
   getContents,
   getCommits,
+  searchRepos,
+  getTrending,
 };
