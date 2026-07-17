@@ -35,12 +35,18 @@ function _request(method, path, body) {
         try {
           const parsed = JSON.parse(raw);
           if (res.statusCode >= 400) {
-            reject(new Error(parsed.message || `HTTP ${res.statusCode}`));
+            const err = new Error(parsed.message || `HTTP ${res.statusCode}`);
+            err.statusCode = res.statusCode;
+            err.detail = parsed.errors ? parsed.errors.map((e) => e.message).join('; ') : '';
+            err.raw = raw;
+            reject(err);
           } else {
             resolve(parsed);
           }
         } catch {
-          reject(new Error(raw || `HTTP ${res.statusCode}`));
+          const err = new Error(raw || `HTTP ${res.statusCode}`);
+          err.raw = raw;
+          reject(err);
         }
       });
     });

@@ -119,7 +119,7 @@ ipcMain.handle('github:setToken', async (_event, token) => {
       return { success: true, user };
     } catch (err) {
       storeService.setGithubUser(null);
-      return { success: false, error: err.message };
+      return { success: false, error: err.message, detail: err.detail || err.raw || '' };
     }
   }
   storeService.setGithubUser(null);
@@ -139,7 +139,7 @@ ipcMain.handle('github:listRepos', async () => {
     const repos = await githubService.listRepos();
     return { success: true, data: repos };
   } catch (err) {
-    return { success: false, error: err.message };
+    return { success: false, error: err.message, detail: err.detail || err.raw || '' };
   }
 });
 
@@ -148,7 +148,7 @@ ipcMain.handle('github:getRepo', async (_event, owner, repo) => {
     const data = await githubService.getRepo(owner, repo);
     return { success: true, data };
   } catch (err) {
-    return { success: false, error: err.message };
+    return { success: false, error: err.message, detail: err.detail || err.raw || '' };
   }
 });
 
@@ -157,7 +157,7 @@ ipcMain.handle('github:createFork', async (_event, owner, repo) => {
     const data = await githubService.createFork(owner, repo);
     return { success: true, data };
   } catch (err) {
-    return { success: false, error: err.message };
+    return { success: false, error: err.message, detail: err.detail || err.raw || '' };
   }
 });
 
@@ -166,7 +166,7 @@ ipcMain.handle('github:createPR', async (_event, owner, repo, head, base, title,
     const data = await githubService.createPR(owner, repo, head, base, title, body);
     return { success: true, data };
   } catch (err) {
-    return { success: false, error: err.message };
+    return { success: false, error: err.message, detail: err.detail || err.raw || '' };
   }
 });
 
@@ -175,7 +175,7 @@ ipcMain.handle('github:mergePR', async (_event, owner, repo, pullNumber) => {
     const data = await githubService.mergePR(owner, repo, pullNumber);
     return { success: true, data };
   } catch (err) {
-    return { success: false, error: err.message };
+    return { success: false, error: err.message, detail: err.detail || err.raw || '' };
   }
 });
 
@@ -184,7 +184,7 @@ ipcMain.handle('github:listPRs', async (_event, owner, repo, state) => {
     const data = await githubService.listPRs(owner, repo, state);
     return { success: true, data };
   } catch (err) {
-    return { success: false, error: err.message };
+    return { success: false, error: err.message, detail: err.detail || err.raw || '' };
   }
 });
 
@@ -193,7 +193,7 @@ ipcMain.handle('github:createRepo', async (_event, name, description, isPrivate,
     const data = await githubService.createRepo(name, description, isPrivate, autoInit, gitignoreTemplate, licenseTemplate);
     return { success: true, data };
   } catch (err) {
-    return { success: false, error: err.message };
+    return { success: false, error: err.message, detail: err.detail || err.raw || '' };
   }
 });
 
@@ -202,6 +202,6 @@ ipcMain.handle('github:deleteRepo', async (_event, owner, repo) => {
     const data = await githubService.deleteRepo(owner, repo);
     return { success: true, data };
   } catch (err) {
-    return { success: false, error: err.message };
+    return { success: false, error: err.message, detail: err.detail || err.raw || '' };
   }
 });

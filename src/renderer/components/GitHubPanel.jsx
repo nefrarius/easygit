@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 const GITIGNORE_TEMPLATES = [
   { value: '', label: 'Ninguno' },
@@ -114,7 +114,7 @@ export default function GitHubPanel({
       setShowTokenInput(false);
       setTokenInput('');
     } else {
-      setResult({ type: 'error', text: `Error: ${result.error}` });
+      setResult({ type: 'error', text: `Error: ${result.error}`, detail: result.detail || result.error });
     }
   };
 
@@ -131,7 +131,7 @@ export default function GitHubPanel({
     if (r.success) {
       setResult({ type: 'success', text: `Fork creado: ${r.data.full_name}` });
     } else {
-      setResult({ type: 'error', text: `Error: ${r.error}` });
+      setResult({ type: 'error', text: `Error: ${r.error}`, detail: r.detail || r.error });
     }
   };
 
@@ -145,7 +145,7 @@ export default function GitHubPanel({
       setPrTitle('');
       setPrBody('');
     } else {
-      setResult({ type: 'error', text: `Error: ${r.error}` });
+      setResult({ type: 'error', text: `Error: ${r.error}`, detail: r.detail || r.error });
     }
   };
 
@@ -157,7 +157,7 @@ export default function GitHubPanel({
       setResult({ type: 'success', text: `PR #${prNumber} mergeado` });
       loadPRs(prState);
     } else {
-      setResult({ type: 'error', text: `Error: ${r.error}` });
+      setResult({ type: 'error', text: `Error: ${r.error}`, detail: r.detail || r.error });
     }
   };
 
@@ -209,7 +209,7 @@ export default function GitHubPanel({
       });
       loadRepos();
     } else {
-      setResult({ type: 'error', text: `Error: ${r.error}` });
+      setResult({ type: 'error', text: `Error: ${r.error}`, detail: r.detail || r.error });
     }
   };
 
@@ -221,7 +221,7 @@ export default function GitHubPanel({
       setConfirmDeleteRepo(null);
       loadRepos();
     } else {
-      setResult({ type: 'error', text: `Error al eliminar: ${r.error}` });
+      setResult({ type: 'error', text: `Error al eliminar: ${r.error}`, detail: r.detail || r.error });
     }
   };
 
@@ -229,7 +229,7 @@ export default function GitHubPanel({
     if (!repoPath) return;
     setResult({ type: 'info', text: 'Haciendo push...' });
     const r = await window.easygit.gitExecWithResult(repoPath, ['push']);
-    setResult({ type: r.success ? 'success' : 'error', text: r.success ? 'Push exitoso' : `Push error: ${r.stderr}` });
+    setResult(r.success ? { type: 'success', text: 'Push exitoso' } : { type: 'error', text: `Push error: ${r.stderr}`, detail: r.stderr });
     onRefresh();
   };
 
@@ -237,7 +237,7 @@ export default function GitHubPanel({
     if (!repoPath) return;
     setResult({ type: 'info', text: 'Haciendo pull...' });
     const r = await window.easygit.gitExecWithResult(repoPath, ['pull']);
-    setResult({ type: r.success ? 'success' : 'error', text: r.success ? 'Pull exitoso' : `Pull error: ${r.stderr}` });
+    setResult(r.success ? { type: 'success', text: 'Pull exitoso' } : { type: 'error', text: `Pull error: ${r.stderr}`, detail: r.stderr });
     onRefresh();
   };
 
@@ -372,14 +372,7 @@ export default function GitHubPanel({
 
       {/* Result message */}
       {result && (
-        <div className={`px-3 py-2 rounded text-xs border flex items-start justify-between ${
-          result.type === 'success' ? 'bg-terminal-green/10 border-terminal-green/30 text-terminal-green' :
-          result.type === 'error' ? 'bg-terminal-red/10 border-terminal-red/30 text-terminal-red' :
-          'bg-terminal-cyan/10 border-terminal-cyan/30 text-terminal-cyan'
-        }`}>
-          <span className="whitespace-pre-wrap break-all">{result.text}</span>
-          <button onClick={() => setResult(null)} className="ml-2 text-terminal-dim hover:text-terminal-fg shrink-0">x</button>
-        </div>
+        <ResultBox result={result} onClear={() => setResult(null)} />
       )}
 
       {/* Crear repo en GitHub */}
@@ -566,6 +559,35 @@ export default function GitHubPanel({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function ResultBox({ result, onClear }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className={`px-3 py-2 rounded text-xs border ${
+      result.type === 'success' ? 'bg-terminal-green/10 border-terminal-green/30 text-terminal-green' :
+      result.type === 'error' ? 'bg-terminal-red/10 border-terminal-red/30 text-terminal-red' :
+      'bg-terminal-cyan/10 border-terminal-cyan/30 text-terminal-cyan'
+    }`}>
+      <div className="flex items-start justify-between">
+        <span className="whitespace-pre-wrap break-all">{result.text}</span>
+        <div className="flex gap-1 shrink-0 ml-2">
+          {result.detail && (
+            <button onClick={() => setExpanded(!expanded)}
+              className="text-terminal-dim hover:text-terminal-fg text-xs px-1">
+              {expanded ? '▲' : '▼'}
+            </button>
+          )}
+          <button onClick={onClear} className="text-terminal-dim hover:text-terminal-fg">x</button>
+        </div>
+      </div>
+      {expanded && result.detail && (
+        <pre className="mt-2 p-2 bg-terminal-bg/50 rounded text-2xs text-terminal-fg font-mono whitespace-pre-wrap overflow-auto max-h-32">
+          {result.detail}
+        </pre>
+      )}
     </div>
   );
 }
