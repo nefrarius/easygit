@@ -48,32 +48,30 @@ export default function CommitGraph({ repoPath }) {
       <div className="font-mono text-xs leading-6 overflow-auto max-h-[500px]">
         {graph.map((row, i) => (
           <div key={i} className="flex whitespace-nowrap">
-            <span className="shrink-0">
-              {[...row.graph].map((ch, j) => (
-                <span key={j} style={{ color: ch === '*' ? (row.color || '#b8cc52') : ch !== ' ' ? '#525252' : undefined }}>
-                  {ch}
-                </span>
-              ))}
+            <span className="shrink-0" style={{ color: row.color || '#b8cc52' }}>
+              {row.graph}
             </span>
-            <span className="text-terminal-dim w-[72px] shrink-0 font-mono">
+            <span className={`w-[72px] shrink-0 font-mono ${row.hash ? 'text-terminal-dim' : ''}`}>
               {row.hash && (
                 <span className="cursor-pointer hover:text-terminal-cyan" onClick={() => navigator.clipboard.writeText(row.hash)} title="Copiar hash">
-                  {row.hash.substring(0, 7)}
+                  {row.hash}
                 </span>
               )}
             </span>
-            <span className="shrink-0 mr-2 space-x-1">
-              {row.refs.map((ref, k) => {
-                const clean = ref.replace('tag: ', '').replace(/[()]/g, '');
-                const isBr = ref.includes('HEAD');
-                const c = isBr ? '#e6db74' : colorFor(clean);
-                return (
-                  <span key={k} className="text-2xs px-1 rounded" style={{ backgroundColor: c + '20', color: c, border: `1px solid ${c}40` }}>
-                    {clean}
-                  </span>
-                );
-              })}
-            </span>
+            {row.refs.length > 0 && (
+              <span className="shrink-0 mr-2 space-x-1">
+                {row.refs.map((ref, k) => {
+                  const clean = ref.replace('tag: ', '').replace(/[()]/g, '');
+                  const isHead = clean === 'HEAD';
+                  const c = isHead ? '#e6db74' : colorFor(clean);
+                  return (
+                    <span key={k} className="text-2xs px-1 rounded" style={{ backgroundColor: c + '20', color: c, border: `1px solid ${c}40` }}>
+                      {clean}
+                    </span>
+                  );
+                })}
+              </span>
+            )}
             <span className="text-terminal-fg truncate">{row.msg}</span>
           </div>
         ))}
@@ -84,28 +82,59 @@ export default function CommitGraph({ repoPath }) {
 
 function parseGraph(out) {
   const lines = out.split('\n').filter(Boolean);
-  const commitColors = {};
-  const bc = {};
+  const branchColors = {};
   let ci = 0;
+  const result = [];
 
-  return lines.map((l) => {
-    const m = l.match(/^([*|/\\\-\s\w._]+?)([a-f0-9]{7,40})\s(.*)/);
-    if (!m) return { graph: [...l], hash: null, refs: [], msg: l.trim(), color: '#525252' };
-    const graph = m[1];
-    const hash = m[2];
-    const rest = m[3];
+  for (const line of lines) {
+    // Find the commit hash: first sequence of 7+ hex chars after graph symbols
+    // Graph symbols are at the start: * | / \ - space
+    const graphMatch = line.match(/^([*|/\\\-\s]+?)([a-f0-9]{7,40})(.*)/);
+    if (!graphMatch) {
+      // Line without commit (graph continuation)
+      result.push({
+        graph: line.replace(/\s+$/, ''),
+        hash: null,
+        refs: [],
+        msg: '',
+        color: '#525252',
+      });
+      continue;
+    }
+
+    const graphStr = graphMatch[1] + '*';
+    const hash = graphMatch[2].substring(0, 7);
+    const rest = graphMatch[3];
+
     let refs = [];
     let msg = rest;
-    const rm = rest.match(/^\((.+?)\)\s(.+)/);
-    if (rm) {
-      refs = rm[1].split(', ').map((s) => s.trim()).filter(Boolean);
-      msg = rm[2];
+
+    // Extract refs from (...)
+    const refMatch = rest.match(/^\s*\((.+?)\)\s*(.*)/);
+    if (refMatch) {
+      refs = refMatch[1].split(', ').map((s) => s.trim()).filter(Boolean);
+      msg = refMatch[2];
     }
-    const br = refs.find((r) => !r.includes('HEAD') && !r.startsWith('tag:') && !r.includes('/'));
-    if (br) {
-      if (!bc[br]) { bc[br] = COLORS[ci % COLORS.length]; ci++; }
-      commitColors[hash] = bc[br];
+
+    // Assign color by branch
+    const localBranch = refs.find((r) => !r.includes('HEAD') && !r.startsWith('tag:') && !r.includes('/'));
+    if (localBranch) {
+      if (!branchColors[localBranch]) {
+        branchColors[localBranch] = COLORS[ci % COLORS.length];
+        ci++;
+      }
     }
-    return { graph: [...graph], hash, refs, msg: msg || '', color: commitColors[hash] || '#b8cc52' };
-  });
+
+    const color = localBranch ? branchColors[localBranch] : '#b8cc52';
+
+    result.push({
+      graph: graphStr,
+      hash,
+      refs,
+      msg: msg.trim(),
+      color,
+    });
+  }
+
+  return result;
 }

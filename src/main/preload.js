@@ -36,4 +36,10 @@ contextBridge.exposeInMainWorld('easygit', {
     ipcRenderer.invoke('github:createRepo', name, description, isPrivate, autoInit, gitignoreTemplate, licenseTemplate),
   githubDeleteRepo: (owner, repo) =>
     ipcRenderer.invoke('github:deleteRepo', owner, repo),
+  githubGetReadme: (owner, repo) =>
+    ipcRenderer.invoke('github:getReadme', owner, repo),
+  githubGetContents: (owner, repo, path) =>
+    ipcRenderer.invoke('github:getContents', owner, repo, path),
+  githubGetCommits: (owner, repo, perPage) =>
+    ipcRenderer.invoke('github:getCommits', owner, repo, perPage),
 });

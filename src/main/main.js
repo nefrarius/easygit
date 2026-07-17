@@ -205,3 +205,30 @@ ipcMain.handle('github:deleteRepo', async (_event, owner, repo) => {
     return { success: false, error: err.message, detail: err.detail || err.raw || '' };
   }
 });
+
+ipcMain.handle('github:getReadme', async (_event, owner, repo) => {
+  try {
+    const data = await githubService.getReadme(owner, repo);
+    return { success: true, data };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('github:getContents', async (_event, owner, repo, path) => {
+  try {
+    const data = await githubService.getContents(owner, repo, path);
+    return { success: true, data };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('github:getCommits', async (_event, owner, repo, perPage) => {
+  try {
+    const data = await githubService.getCommits(owner, repo, perPage);
+    return { success: true, data };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});

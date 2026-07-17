@@ -32,6 +32,12 @@ function _request(method, path, body) {
       res.on('data', (c) => chunks.push(c));
       res.on('end', () => {
         const raw = Buffer.concat(chunks).toString();
+
+        // 204 No Content = success, no body
+        if (res.statusCode === 204) {
+          return resolve({ deleted: true });
+        }
+
         try {
           const parsed = JSON.parse(raw);
           if (res.statusCode >= 400) {
@@ -44,6 +50,10 @@ function _request(method, path, body) {
             resolve(parsed);
           }
         } catch {
+          // Si raw está vacío y status es 2xx, es éxito sin body
+          if (!raw.trim() && res.statusCode >= 200 && res.statusCode < 300) {
+            return resolve({ success: true });
+          }
           const err = new Error(raw || `HTTP ${res.statusCode}`);
           err.raw = raw;
           reject(err);
@@ -69,7 +79,7 @@ async function getUser() {
 }
 
 async function listRepos() {
-  return _request('GET', '/user/repos?per_page=50&sort=updated');
+  return _request('GET', '/user/repos?per_page=100&sort=updated');
 }
 
 async function getRepo(owner, repo) {
@@ -92,15 +102,50 @@ async function listPRs(owner, repo, state = 'open') {
   return _request('GET', `/repos/${owner}/${repo}/pulls?state=${state}&per_page=50`);
 }
 
-async function deleteRepo(owner, repo) {
-  return _request('DELETE', `/repos/${owner}/${repo}`);
-}
-
 async function createRepo(name, description, isPrivate = false, autoInit = true, gitignoreTemplate = '', licenseTemplate = '') {
   const body = { name, description, private: isPrivate, auto_init: autoInit };
   if (gitignoreTemplate) body.gitignore_template = gitignoreTemplate;
   if (licenseTemplate) body.license_template = licenseTemplate;
   return _request('POST', '/user/repos', body);
+}
+
+async function deleteRepo(owner, repo) {
+  return _request('DELETE', `/repos/${owner}/${repo}`);
+}
+
+// Repo Explorer API calls
+
+async function getReadme(owner, repo) {
+  const data = await _request('GET', `/repos/${owner}/${repo}/readme`);
+  // Content viene en base64
+  if (data.content) {
+    data.content_decoded = Buffer.from(data.content, 'base64').toString('utf-8');
+  }
+  return data;
+}
+
+async function getContents(owner, repo, path = '') {
+  const p = path ? `/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}` : `/repos/${owner}/${repo}/contents`;
+  const data = await _request('GET', p);
+  // Si es array, es lista de directorio
+  if (Array.isArray(data)) {
+    return data.map((item) => ({
+      name: item.name,
+      path: item.path,
+      type: item.type, // 'file' | 'dir'
+      size: item.size,
+      url: item.html_url,
+    }));
+  }
+  // Si es objeto single file, decodificar
+  if (data.content) {
+    data.content_decoded = Buffer.from(data.content, 'base64').toString('utf-8');
+  }
+  return data;
+}
+
+async function getCommits(owner, repo, perPage = 20) {
+  return _request('GET', `/repos/${owner}/${repo}/commits?per_page=${perPage}`);
 }
 
 module.exports = {
@@ -115,4 +160,7 @@ module.exports = {
   listPRs,
   createRepo,
   deleteRepo,
+  getReadme,
+  getContents,
+  getCommits,
 };
