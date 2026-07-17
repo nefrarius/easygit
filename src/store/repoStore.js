@@ -153,6 +153,65 @@ export function useRepoStore() {
     [addTerminalLine, appendTerminalOutput, setTerminalDone]
   );
 
+  const executeGitCommand = useCallback(
+    async (repoPath, input, store = true) => {
+      if (!repoPath || !input.trim()) return null;
+
+      let args;
+      const trimmed = input.trim();
+      if (trimmed.startsWith('git ')) {
+        args = trimmed.slice(4).split(' ').filter(Boolean);
+      } else {
+        args = trimmed.split(' ').filter(Boolean);
+      }
+
+      const cmdStr = `git ${args.join(' ')}`;
+      const lineId = addTerminalLine({
+        type: 'command',
+        command: cmdStr,
+        args,
+        output: '',
+        done: false,
+        success: null,
+        isUserInput: true,
+      });
+
+      const result = await window.easygit.gitExecWithResult(repoPath, args);
+
+      appendTerminalOutput(lineId, result.stdout || result.stderr || '');
+      setTerminalDone(lineId, result.success);
+
+      if (store) {
+        await window.easygit.storeAddHistory({
+          repoPath,
+          command: 'git',
+          args,
+          stdout: result.stdout,
+          stderr: result.stderr,
+          success: result.success,
+          exitCode: result.exitCode,
+          branch: stateRef.current.status?.current || '',
+          timestamp: result.timestamp,
+        });
+      }
+
+      return result;
+    },
+    [addTerminalLine, appendTerminalOutput, setTerminalDone]
+  );
+
+  const addLog = useCallback((repoPath, label, text, success = null) => {
+    const lineId = addTerminalLine({
+      type: 'log',
+      command: label,
+      output: text,
+      done: true,
+      success,
+      isUserInput: false,
+    });
+    return lineId;
+  }, [addTerminalLine]);
+
   const approveCommand = useCallback((lineId) => {
     setState((prev) => ({
       ...prev,
@@ -177,7 +236,9 @@ export function useRepoStore() {
     setStatus,
     setBranches,
     addTerminalLine,
+    addLog,
     executeCommand,
+    executeGitCommand,
     executeWithApproval,
     approveCommand,
     rejectCommand,

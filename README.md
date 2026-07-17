@@ -29,10 +29,12 @@ Sin backend. Sin telemetría. 100% local.
 
 | | Característica | Descripción |
 |---|---|---|
-| 🖥️ | **Terminal visual** | Cada comando `git` aparece con animación de escritura. Color verde sobre fondo oscuro. |
-| 🔐 | **Aprobación manual** | Los comandos requieren clic "Ejecutar"/"Cancelar" antes de correr. Los destructivos piden doble confirmación. |
+| 🖥️ | **Terminal interactiva** | Escribe comandos `git` directo en el panel inferior. ↑/↓ historial. Enter ejecuta. |
+| 📊 | **Git Graph** | Árbol visual de commits con colores por rama. Click en hash para copiar. |
+| 📝 | **Selección de archivos + Diff** | Checkboxes para elegir qué commiteas. Modal de commit. Panel de diff con colores +/ -. |
+| 🔐 | **Aprobación manual** | Los comandos destructivos piden doble confirmación. |
 | ⚡ | **Acciones rápidas** | Quick Commit, Sync, Nueva rama, Undo commit, Descartar cambios. Todo en un clic. |
-| 🐙 | **GitHub integrado** | Login con token, crear repos, push, pull, fork, PRs, merge. Sin salir de la app. |
+| 🐙 | **GitHub integrado** | Login con token, crear repos (con .gitignore/licencia), push, pull, fork, PRs, merge, **borrar repos**. |
 | 📜 | **Historial persistente** | Todos los comandos ejecutados se guardan localmente. Filtro por comando o rama. |
 | 🧠 | **Commit messages** | Generación automática basada en archivos modificados. Hook listo para conectar un LLM. |
 
@@ -48,6 +50,38 @@ npm run dev
 **Requisitos:** Node.js 18+, Git instalado en el sistema.
 
 ---
+
+## 💻 Terminal interactiva
+
+El panel inferior de la app es una **terminal git interactiva**:
+
+```
+$ git status
+$ add .
+$ commit -m "feat: login form"
+$ push
+```
+
+- Escribe comandos con o sin prefijo `git` (`status` o `git status`)
+- **↑/↓** navega historial de la sesión
+- **Enter** ejecuta el comando en el repo actual
+- El resultado se muestra en vivo con ✔ éxito / ✘ error
+- Click en cualquier comando para copiarlo al portapapeles
+
+### Comandos disponibles
+
+| Comando | Equivalente |
+|---------|-------------|
+| `status` | `git status` |
+| `add .` | `git add .` |
+| `commit -m "msg"` | `git commit -m "msg"` |
+| `push` | `git push` |
+| `pull` | `git pull` |
+| `log --oneline -5` | `git log --oneline -5` |
+| `branch` | `git branch` |
+| `checkout -b feature` | `git checkout -b feature` |
+| `diff` | `git diff` |
+| `stash` | `git stash` |
 
 ## 📖 Uso
 

@@ -196,3 +196,12 @@ ipcMain.handle('github:createRepo', async (_event, name, description, isPrivate,
     return { success: false, error: err.message };
   }
 });
+
+ipcMain.handle('github:deleteRepo', async (_event, owner, repo) => {
+  try {
+    const data = await githubService.deleteRepo(owner, repo);
+    return { success: true, data };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});

@@ -34,4 +34,6 @@ contextBridge.exposeInMainWorld('easygit', {
     ipcRenderer.invoke('github:listPRs', owner, repo, state),
   githubCreateRepo: (name, description, isPrivate, autoInit, gitignoreTemplate, licenseTemplate) =>
     ipcRenderer.invoke('github:createRepo', name, description, isPrivate, autoInit, gitignoreTemplate, licenseTemplate),
+  githubDeleteRepo: (owner, repo) =>
+    ipcRenderer.invoke('github:deleteRepo', owner, repo),
 });

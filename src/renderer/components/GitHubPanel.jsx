@@ -65,6 +65,7 @@ export default function GitHubPanel({
   const [prHead, setPrHead] = useState('');
   const [showPRForm, setShowPRForm] = useState(false);
   const [showCreateRepo, setShowCreateRepo] = useState(false);
+  const [confirmDeleteRepo, setConfirmDeleteRepo] = useState(null);
   const [result, setResult] = useState(null);
 
   const [newRepo, setNewRepo] = useState({
@@ -209,6 +210,18 @@ export default function GitHubPanel({
       loadRepos();
     } else {
       setResult({ type: 'error', text: `Error: ${r.error}` });
+    }
+  };
+
+  const handleDeleteRepo = async (owner, repo) => {
+    setResult({ type: 'info', text: `Eliminando ${owner}/${repo}...` });
+    const r = await window.easygit.githubDeleteRepo(owner, repo);
+    if (r.success) {
+      setResult({ type: 'success', text: `Repo ${owner}/${repo} eliminado permanentemente.` });
+      setConfirmDeleteRepo(null);
+      loadRepos();
+    } else {
+      setResult({ type: 'error', text: `Error al eliminar: ${r.error}` });
     }
   };
 
@@ -527,12 +540,27 @@ export default function GitHubPanel({
           ) : (
             repos.map((repo) => (
               <div key={repo.id}
-                className="flex items-center gap-2 px-3 py-1.5 border-b border-terminal-dim/10 last:border-0 text-xs hover:bg-terminal-highlight/30 cursor-pointer"
+                className="group flex items-center gap-2 px-3 py-1.5 border-b border-terminal-dim/10 last:border-0 text-xs hover:bg-terminal-highlight/30 cursor-pointer"
                 onClick={() => setResult({ type: 'info', text: `URL: ${repo.html_url}\nClone: ${repo.clone_url}` })}>
                 <span className="shrink-0">{repo.private ? '🔒' : '○'}</span>
                 <span className="flex-1 truncate text-terminal-fg">{repo.full_name}</span>
                 <span className="text-2xs text-terminal-dim">{repo.language || ''}</span>
                 <span className="text-2xs text-terminal-dim">{repo.license?.spdx_id || ''}</span>
+                {confirmDeleteRepo === repo.full_name ? (
+                  <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <span className="text-2xs text-terminal-red">¿Eliminar?</span>
+                    <button onClick={() => {
+                      const [owner, name] = repo.full_name.split('/');
+                      handleDeleteRepo(owner, name);
+                    }} className="text-2xs px-1.5 py-0.5 border border-terminal-red/50 text-terminal-red rounded hover:bg-terminal-red/10">Sí</button>
+                    <button onClick={() => setConfirmDeleteRepo(null)} className="text-2xs px-1.5 py-0.5 border border-terminal-dim/50 text-terminal-dim rounded hover:text-terminal-fg">No</button>
+                  </div>
+                ) : (
+                  <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteRepo(repo.full_name); }}
+                    className="text-2xs px-1.5 py-0.5 border border-terminal-dim/30 text-terminal-dim rounded hover:border-terminal-red/50 hover:text-terminal-red transition-colors shrink-0 opacity-0 group-hover:opacity-100">
+                    ✕
+                  </button>
+                )}
               </div>
             ))
           )}

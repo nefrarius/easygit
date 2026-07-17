@@ -86,6 +86,10 @@ async function listPRs(owner, repo, state = 'open') {
   return _request('GET', `/repos/${owner}/${repo}/pulls?state=${state}&per_page=50`);
 }
 
+async function deleteRepo(owner, repo) {
+  return _request('DELETE', `/repos/${owner}/${repo}`);
+}
+
 async function createRepo(name, description, isPrivate = false, autoInit = true, gitignoreTemplate = '', licenseTemplate = '') {
   const body = { name, description, private: isPrivate, auto_init: autoInit };
   if (gitignoreTemplate) body.gitignore_template = gitignoreTemplate;
@@ -104,4 +108,5 @@ module.exports = {
   mergePR,
   listPRs,
   createRepo,
+  deleteRepo,
 };
