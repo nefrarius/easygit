@@ -19,11 +19,11 @@ function escapeShellArg(arg) {
   return `'${str.replace(/'/g, "'\\''")}'`;
 }
 
-function execCommand(repoPath, args) {
+function execCommand(repoPath, args, timeoutMs = 60000) {
   return new Promise((resolve, reject) => {
     const cmdStr = `git ${args.join(' ')}`;
 
-    const child = execFile('git', args, { cwd: repoPath }, (error, stdout, stderr) => {
+    const child = execFile('git', args, { cwd: repoPath, timeout: timeoutMs }, (error, stdout, stderr) => {
       const result = {
         command: cmdStr,
         stdout: stdout.trim(),

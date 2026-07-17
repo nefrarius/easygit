@@ -78,8 +78,8 @@ ipcMain.handle('git:exec', async (_event, folderPath, command, args) => {
   return gitService.execCommand(folderPath, [command, ...args]);
 });
 
-ipcMain.handle('git:execWithResult', async (_event, folderPath, args) => {
-  const result = await gitService.execCommand(folderPath, args);
+ipcMain.handle('git:execWithResult', async (_event, folderPath, args, timeoutMs) => {
+  const result = await gitService.execCommand(folderPath, args, timeoutMs);
   return result;
 });
 

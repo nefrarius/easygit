@@ -156,14 +156,25 @@ export default function GitHubPanel({ repoPath, status, githubUser, onLogin, onL
     return r.success ? r.stdout.trim() : 'main';
   };
 
+  const hasLocalCommits = async (path) => {
+    if (!path) return false;
+    const r = await window.easygit.gitExecWithResult(path, ['rev-parse', '--verify', 'HEAD']);
+    return r.success;
+  };
+
   const handleCreateRepo = async () => {
     if (!newRepo.name || creating) return;
     setCreating(true);
     setResult({ type: 'info', text: 'Paso 1/3: Creando repositorio en GitHub...' });
 
+    // Si el repo local ya tiene commits, no usar auto_init (evita historias divergentes)
+    const localHasCommits = await hasLocalCommits(repoPath);
+    const useAutoInit = localHasCommits ? false : newRepo.autoInit;
+
     const r = await window.easygit.githubCreateRepo(
       newRepo.name, newRepo.description, newRepo.isPrivate,
-      newRepo.autoInit, newRepo.gitignoreTemplate, newRepo.licenseTemplate
+      useAutoInit, useAutoInit ? newRepo.gitignoreTemplate : '',
+      useAutoInit ? newRepo.licenseTemplate : ''
     );
 
     if (!r.success) {
@@ -173,10 +184,8 @@ export default function GitHubPanel({ repoPath, status, githubUser, onLogin, onL
     }
 
     const data = r.data;
-    let msg = `Paso 2/3: Configurando remote...`;
-    setResult({ type: 'info', text: msg });
+    setResult({ type: 'info', text: 'Paso 2/3: Configurando remote...' });
 
-    // Push code if local repo open
     if (repoPath) {
       const addResult = await window.easygit.gitExecWithResult(repoPath, ['remote', 'add', 'origin', data.clone_url]);
       if (!addResult.success) {
@@ -184,20 +193,21 @@ export default function GitHubPanel({ repoPath, status, githubUser, onLogin, onL
       }
 
       const branch = await getCurrentBranch(repoPath);
-      setResult({ type: 'info', text: 'Paso 3/3: Subiendo código...' });
-      const pushResult = await window.easygit.gitExecWithResult(repoPath, ['push', '-u', 'origin', branch]);
+      setResult({ type: 'info', text: 'Paso 3/3: Subiendo código (puede tardar unos segundos)...' });
+      const pushResult = await window.easygit.gitExecWithResult(repoPath, ['push', '-u', 'origin', branch], 120000);
 
       if (pushResult.success) {
-        msg = `✔ Repo creado y código subido: ${data.html_url}`;
+        setResult({ type: 'success', text: `✔ Repo creado y código subido: ${data.html_url}` });
         onRefresh();
+      } else if (pushResult.stdout?.includes('Everything up-to-date')) {
+        setResult({ type: 'success', text: `✔ Repo creado. El código ya estaba sincronizado: ${data.html_url}` });
       } else {
-        msg = `✔ Repo creado: ${data.html_url}\n⚠ Push manual: git push -u origin ${branch}`;
+        setResult({ type: 'error', text: `⚠ Repo creado pero push falló.\n${pushResult.stderr}\n\nPush manual: git push -u origin ${branch}`, detail: pushResult.stderr });
       }
     } else {
-      msg = `✔ Repo creado: ${data.html_url}`;
+      setResult({ type: 'success', text: `✔ Repo creado: ${data.html_url}` });
     }
 
-    setResult({ type: 'success', text: msg });
     setShowCreateRepo(false);
     setNewRepo({ name: '', description: '', isPrivate: false, autoInit: true, gitignoreTemplate: 'Node', licenseTemplate: 'mit' });
     setCreating(false);
@@ -219,7 +229,7 @@ export default function GitHubPanel({ repoPath, status, githubUser, onLogin, onL
   const handlePush = async () => {
     if (!repoPath) return;
     setResult({ type: 'info', text: 'Subiendo commits al remoto...' });
-    const r = await window.easygit.gitExecWithResult(repoPath, ['push']);
+    const r = await window.easygit.gitExecWithResult(repoPath, ['push'], 120000);
     setResult(r.success
       ? { type: 'success', text: '✔ Push exitoso. Tus commits ya están en GitHub.' }
       : { type: 'error', text: `Error en push: ${r.stderr}`, detail: r.stderr });
@@ -229,7 +239,7 @@ export default function GitHubPanel({ repoPath, status, githubUser, onLogin, onL
   const handlePull = async () => {
     if (!repoPath) return;
     setResult({ type: 'info', text: 'Descargando cambios del remoto...' });
-    const r = await window.easygit.gitExecWithResult(repoPath, ['pull']);
+    const r = await window.easygit.gitExecWithResult(repoPath, ['pull'], 120000);
     setResult(r.success
       ? { type: 'success', text: '✔ Pull exitoso. Tus cambios locales están actualizados.' }
       : { type: 'error', text: `Error en pull: ${r.stderr}`, detail: r.stderr });

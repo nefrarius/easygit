@@ -9,7 +9,7 @@ contextBridge.exposeInMainWorld('easygit', {
   gitLog: (folderPath, maxCount) => ipcRenderer.invoke('git:log', folderPath, maxCount),
   gitRemotes: (folderPath) => ipcRenderer.invoke('git:remotes', folderPath),
   gitExec: (folderPath, command, args) => ipcRenderer.invoke('git:exec', folderPath, command, args),
-  gitExecWithResult: (folderPath, args) => ipcRenderer.invoke('git:execWithResult', folderPath, args),
+  gitExecWithResult: (folderPath, args, timeoutMs) => ipcRenderer.invoke('git:execWithResult', folderPath, args, timeoutMs),
   gitDiff: (folderPath) => ipcRenderer.invoke('git:diff', folderPath),
 
   // Store
