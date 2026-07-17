@@ -72,7 +72,7 @@ export default function GitHubPanel({ repoPath, status, githubUser, onLogin, onL
 
   // Repo settings modal
   const [settingsRepo, setSettingsRepo] = useState(null);
-  const [settingsForm, setSettingsForm] = useState({ description: '', isPrivate: false });
+  const [settingsForm, setSettingsForm] = useState({ description: '', isPrivate: false, license: '' });
 
   // Credential popup
   const [showCredPopup, setShowCredPopup] = useState(false);
@@ -553,6 +553,14 @@ export default function GitHubPanel({ repoPath, status, githubUser, onLogin, onL
                 </div>
               </div>
               <div>
+                <label className="text-2xs text-terminal-dim uppercase tracking-wider block mb-1">Licencia</label>
+                <select value={settingsForm.license}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, license: e.target.value })}
+                  className="w-full bg-terminal-bg border border-terminal-dim/30 rounded px-2 py-1.5 text-xs text-terminal-fg font-mono outline-none focus:border-terminal-green/50">
+                  {LICENSE_TEMPLATES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+              <div>
                 <label className="text-2xs text-terminal-dim uppercase tracking-wider block mb-1">URL del repo</label>
                 <div className="text-xs text-terminal-dim font-mono break-all bg-terminal-bg/50 rounded p-2">{settingsRepo.html_url}</div>
               </div>
@@ -561,6 +569,7 @@ export default function GitHubPanel({ repoPath, status, githubUser, onLogin, onL
                   const r = await window.easygit.githubUpdateRepo(settingsRepo.owner?.login || settingsRepo.owner?.name, settingsRepo.name, {
                     description: settingsForm.description,
                     private: settingsForm.isPrivate,
+                    license_template: settingsForm.license || undefined,
                   });
                   if (r.success) {
                     setResult({ type: 'success', text: '✔ Repo actualizado.' });
@@ -703,7 +712,7 @@ export default function GitHubPanel({ repoPath, status, githubUser, onLogin, onL
               </div>
               <span className="text-2xs text-terminal-dim shrink-0">{repo.language || ''}</span>
               <span className="text-2xs text-terminal-dim shrink-0 mr-1">{repo.license?.spdx_id || ''}</span>
-              <button onClick={(e) => { e.stopPropagation(); setSettingsRepo(repo); setSettingsForm({ description: repo.description || '', isPrivate: repo.private }); }}
+              <button onClick={(e) => { e.stopPropagation(); setSettingsRepo(repo); setSettingsForm({ description: repo.description || '', isPrivate: repo.private, license: repo.license?.spdx_id?.toLowerCase() || '' }); }}
                 className="text-2xs px-1.5 py-0.5 border border-terminal-dim/30 text-terminal-dim rounded hover:border-terminal-yellow/50 hover:text-terminal-yellow transition-colors shrink-0 opacity-0 group-hover:opacity-100 mr-1">
                 ⚙
               </button>
