@@ -113,6 +113,10 @@ async function deleteRepo(owner, repo) {
   return _request('DELETE', `/repos/${owner}/${repo}`);
 }
 
+async function updateRepo(owner, repo, settings) {
+  return _request('PATCH', `/repos/${owner}/${repo}`, settings);
+}
+
 // Repo Explorer API calls
 
 async function getReadme(owner, repo) {
@@ -160,6 +164,7 @@ module.exports = {
   listPRs,
   createRepo,
   deleteRepo,
+  updateRepo,
   getReadme,
   getContents,
   getCommits,

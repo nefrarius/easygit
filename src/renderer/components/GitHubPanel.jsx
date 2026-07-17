@@ -67,6 +67,16 @@ export default function GitHubPanel({ repoPath, status, githubUser, onLogin, onL
     gitignoreTemplate: 'Node', licenseTemplate: 'mit',
   });
 
+  // Remote config dialog after creating repo
+  const [remoteDialogRepo, setRemoteDialogRepo] = useState(null);
+
+  // Repo settings modal
+  const [settingsRepo, setSettingsRepo] = useState(null);
+  const [settingsForm, setSettingsForm] = useState({ description: '', isPrivate: false });
+
+  // Credential popup
+  const [showCredPopup, setShowCredPopup] = useState(false);
+
   const parseRemote = () => {
     if (!status?.tracking) return null;
     const m = status.tracking.match(/github\.com[:/](.+?)\/(.+?)\.git/);
@@ -228,29 +238,10 @@ export default function GitHubPanel({ repoPath, status, githubUser, onLogin, onL
     }
 
     const data = r.data;
-    setResult({ type: 'info', text: 'Paso 2/3: Configurando remote...' });
 
     if (repoPath) {
-      const token = await window.easygit.githubGetToken();
-      const remoteUrl = token ? embedTokenInUrl(data.clone_url, token) : data.clone_url;
-
-      const addResult = await window.easygit.gitExecWithResult(repoPath, ['remote', 'add', 'origin', remoteUrl]);
-      if (!addResult.success) {
-        await window.easygit.gitExecWithResult(repoPath, ['remote', 'set-url', 'origin', remoteUrl]);
-      }
-
-      const branch = await getCurrentBranch(repoPath);
-      setResult({ type: 'info', text: 'Paso 3/3: Subiendo código (puede tardar unos segundos)...' });
-      const pushResult = await window.easygit.gitExecWithResult(repoPath, ['push', '-u', 'origin', branch], 120000);
-
-      if (pushResult.success) {
-        setResult({ type: 'success', text: `✔ Repo creado y código subido: ${data.html_url}` });
-        onRefresh();
-      } else if (pushResult.stdout?.includes('Everything up-to-date')) {
-        setResult({ type: 'success', text: `✔ Repo creado. El código ya estaba sincronizado: ${data.html_url}` });
-      } else {
-        setResult({ type: 'error', text: `⚠ Repo creado pero push falló.\n${pushResult.stderr}\n\nPush manual: git push -u origin ${branch}`, detail: pushResult.stderr });
-      }
+      // Show dialog asking if user wants to configure remote and push
+      setRemoteDialogRepo(data);
     } else {
       setResult({ type: 'success', text: `✔ Repo creado: ${data.html_url}` });
     }
@@ -259,6 +250,44 @@ export default function GitHubPanel({ repoPath, status, githubUser, onLogin, onL
     setNewRepo({ name: '', description: '', isPrivate: false, autoInit: true, gitignoreTemplate: 'Node', licenseTemplate: 'mit' });
     setCreating(false);
     loadRepos();
+  };
+
+  const handleRemoteYes = async () => {
+    const data = remoteDialogRepo;
+    setRemoteDialogRepo(null);
+    if (!data || !repoPath) return;
+    setCreating(true);
+    setResult({ type: 'info', text: 'Configurando remote y subiendo código...' });
+
+    const token = await window.easygit.githubGetToken();
+    const remoteUrl = token ? embedTokenInUrl(data.clone_url, token) : data.clone_url;
+
+    const addResult = await window.easygit.gitExecWithResult(repoPath, ['remote', 'add', 'origin', remoteUrl]);
+    if (!addResult.success) {
+      await window.easygit.gitExecWithResult(repoPath, ['remote', 'set-url', 'origin', remoteUrl]);
+    }
+
+    const branch = await getCurrentBranch(repoPath);
+    setResult({ type: 'info', text: 'Subiendo código (puede tardar unos segundos)...' });
+    const pushResult = await window.easygit.gitExecWithResult(repoPath, ['push', '-u', 'origin', branch], 120000);
+
+    if (pushResult.success) {
+      setResult({ type: 'success', text: `✔ Repo creado y código subido: ${data.html_url}` });
+      onRefresh();
+    } else if (pushResult.stdout?.includes('Everything up-to-date')) {
+      setResult({ type: 'success', text: `✔ Repo creado. El código ya estaba sincronizado: ${data.html_url}` });
+    } else {
+      setResult({ type: 'error', text: `✔ Repo creado. ⚠ Push falló.\n${pushResult.stderr}\n\nPush manual: git push -u origin ${branch}`, detail: pushResult.stderr });
+    }
+    setCreating(false);
+  };
+
+  const handleRemoteNo = () => {
+    const data = remoteDialogRepo;
+    setRemoteDialogRepo(null);
+    if (data) {
+      setResult({ type: 'success', text: `✔ Repo creado: ${data.html_url}` });
+    }
   };
 
   const handleDeleteRepo = async (owner, repo) => {
@@ -389,7 +418,7 @@ export default function GitHubPanel({ repoPath, status, githubUser, onLogin, onL
                 <div className="text-xs text-terminal-green">{remote.owner}/{remote.repo}</div>
                 <div className="text-2xs text-terminal-dim mt-1">{status?.tracking}</div>
               </div>
-              <button onClick={setupCredentialRemote}
+              <button onClick={() => setShowCredPopup(true)}
                 className="px-2 py-1 text-2xs border border-terminal-cyan/50 text-terminal-cyan rounded hover:bg-terminal-cyan/10 transition-colors shrink-0 ml-2">
                 🔑 Configurar credenciales
               </button>
@@ -454,6 +483,103 @@ export default function GitHubPanel({ repoPath, status, githubUser, onLogin, onL
 
       {/* Result message */}
       {result && <ResultBox result={result} onClear={() => setResult(null)} />}
+
+      {/* Remote config dialog */}
+      {remoteDialogRepo && (
+        <div className="bg-terminal-highlight/70 border border-terminal-cyan/40 rounded p-4 space-y-3">
+          <h4 className="text-xs font-bold text-terminal-cyan">✔ Repo creado: {remoteDialogRepo.full_name}</h4>
+          <p className="text-xs text-terminal-dim">¿Quieres configurar el remote y subir el código local?</p>
+          <div className="flex gap-2">
+            <button onClick={handleRemoteYes} disabled={creating}
+              className="px-3 py-1.5 text-xs border border-terminal-green/50 text-terminal-green rounded hover:bg-terminal-green/10 transition-colors">
+              {creating ? 'Subiendo...' : 'Sí, configurar y subir'}
+            </button>
+            <button onClick={handleRemoteNo} disabled={creating}
+              className="px-3 py-1.5 text-xs border border-terminal-dim/50 text-terminal-dim rounded hover:text-terminal-fg transition-colors">
+              No, solo crearlo
+            </button>
+          </div>
+          <div className="text-2xs text-terminal-dim">
+            URL: {remoteDialogRepo.html_url}
+          </div>
+        </div>
+      )}
+
+      {/* Credential popup */}
+      {showCredPopup && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowCredPopup(false)}>
+          <div className="bg-terminal-highlight border border-terminal-cyan/40 rounded p-6 max-w-md w-full mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-sm font-bold text-terminal-cyan mb-3">🔑 Configurar credenciales</h3>
+            <p className="text-xs text-terminal-dim mb-3">
+              Esto actualizará la URL del remote <span className="text-terminal-fg">origin</span> para incluir tu token de GitHub.
+              Así no te pedirá usuario/contraseña en cada push.
+            </p>
+            <div className="flex gap-2">
+              <button onClick={async () => { await setupCredentialRemote(); setShowCredPopup(false); }}
+                className="px-3 py-1.5 text-xs border border-terminal-cyan/50 text-terminal-cyan rounded hover:bg-terminal-cyan/10 transition-colors">
+                Sí, configurar
+              </button>
+              <button onClick={() => setShowCredPopup(false)}
+                className="px-3 py-1.5 text-xs border border-terminal-dim/50 text-terminal-dim rounded hover:text-terminal-fg transition-colors">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings modal */}
+      {settingsRepo && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setSettingsRepo(null)}>
+          <div className="bg-terminal-highlight border border-terminal-green/40 rounded p-6 max-w-md w-full mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-terminal-green">⚙ Editar {settingsRepo.full_name}</h3>
+              <button onClick={() => setSettingsRepo(null)} className="text-terminal-dim hover:text-terminal-fg">✕</button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-2xs text-terminal-dim uppercase tracking-wider block mb-1">Descripción</label>
+                <input type="text" value={settingsForm.description}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, description: e.target.value })}
+                  className="w-full bg-terminal-bg border border-terminal-dim/30 rounded px-2 py-1.5 text-xs text-terminal-fg font-mono outline-none focus:border-terminal-green/50" />
+              </div>
+              <div>
+                <label className="text-2xs text-terminal-dim uppercase tracking-wider block mb-1">Visibilidad</label>
+                <div className="flex gap-2">
+                  <button onClick={() => setSettingsForm({ ...settingsForm, isPrivate: false })}
+                    className={`px-3 py-1.5 text-xs border rounded transition-colors ${!settingsForm.isPrivate ? 'bg-terminal-highlight border-terminal-green/50 text-terminal-green' : 'border-terminal-dim/30 text-terminal-dim hover:text-terminal-fg'}`}>○ Público</button>
+                  <button onClick={() => setSettingsForm({ ...settingsForm, isPrivate: true })}
+                    className={`px-3 py-1.5 text-xs border rounded transition-colors ${settingsForm.isPrivate ? 'bg-terminal-highlight border-terminal-green/50 text-terminal-green' : 'border-terminal-dim/30 text-terminal-dim hover:text-terminal-fg'}`}>🔒 Privado</button>
+                </div>
+              </div>
+              <div>
+                <label className="text-2xs text-terminal-dim uppercase tracking-wider block mb-1">URL del repo</label>
+                <div className="text-xs text-terminal-dim font-mono break-all bg-terminal-bg/50 rounded p-2">{settingsRepo.html_url}</div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button onClick={async () => {
+                  const r = await window.easygit.githubUpdateRepo(settingsRepo.owner?.login || settingsRepo.owner?.name, settingsRepo.name, {
+                    description: settingsForm.description,
+                    private: settingsForm.isPrivate,
+                  });
+                  if (r.success) {
+                    setResult({ type: 'success', text: '✔ Repo actualizado.' });
+                    setSettingsRepo(null);
+                    loadRepos();
+                  } else {
+                    setResult({ type: 'error', text: `Error: ${r.error}`, detail: r.detail || r.error });
+                  }
+                }}
+                  className="px-3 py-1.5 text-xs border border-terminal-green/50 text-terminal-green rounded hover:bg-terminal-green/10 transition-colors">
+                  $ Guardar cambios
+                </button>
+                <button onClick={() => setSettingsRepo(null)}
+                  className="px-3 py-1.5 text-xs border border-terminal-dim/50 text-terminal-dim rounded hover:text-terminal-fg transition-colors">Cancelar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create repo */}
       <div>
@@ -577,6 +703,10 @@ export default function GitHubPanel({ repoPath, status, githubUser, onLogin, onL
               </div>
               <span className="text-2xs text-terminal-dim shrink-0">{repo.language || ''}</span>
               <span className="text-2xs text-terminal-dim shrink-0 mr-1">{repo.license?.spdx_id || ''}</span>
+              <button onClick={(e) => { e.stopPropagation(); setSettingsRepo(repo); setSettingsForm({ description: repo.description || '', isPrivate: repo.private }); }}
+                className="text-2xs px-1.5 py-0.5 border border-terminal-dim/30 text-terminal-dim rounded hover:border-terminal-yellow/50 hover:text-terminal-yellow transition-colors shrink-0 opacity-0 group-hover:opacity-100 mr-1">
+                ⚙
+              </button>
               {confirmDeleteRepo === repo.full_name ? (
                 <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                   <span className="text-2xs text-terminal-red">¿Eliminar?</span>

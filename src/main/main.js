@@ -206,6 +206,15 @@ ipcMain.handle('github:deleteRepo', async (_event, owner, repo) => {
   }
 });
 
+ipcMain.handle('github:updateRepo', async (_event, owner, repo, settings) => {
+  try {
+    const data = await githubService.updateRepo(owner, repo, settings);
+    return { success: true, data };
+  } catch (err) {
+    return { success: false, error: err.message, detail: err.detail || err.raw || '' };
+  }
+});
+
 ipcMain.handle('github:getReadme', async (_event, owner, repo) => {
   try {
     const data = await githubService.getReadme(owner, repo);
