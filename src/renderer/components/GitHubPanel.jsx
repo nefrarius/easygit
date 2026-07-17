@@ -162,6 +162,50 @@ export default function GitHubPanel({ repoPath, status, githubUser, onLogin, onL
     return r.success;
   };
 
+  const embedTokenInUrl = (url, token) => {
+    if (!token || !url) return url;
+    try {
+      const u = new URL(url);
+      if (u.protocol === 'https:' || u.protocol === 'http:') {
+        u.username = 'oauth2';
+        u.password = token;
+        return u.toString().replace(/\/$/, '');
+      }
+    } catch {}
+    return url;
+  };
+
+  const setupCredentialRemote = async () => {
+    if (!repoPath) return;
+    const token = await window.easygit.githubGetToken();
+    if (!token) {
+      setResult({ type: 'error', text: 'No hay token de GitHub. Conéctate primero en la pestaña GitHub.' });
+      return;
+    }
+    const remotesResult = await window.easygit.gitRemotes(repoPath);
+    if (!remotesResult.success || !remotesResult.data.length) {
+      setResult({ type: 'error', text: 'No hay remotes configurados.' });
+      return;
+    }
+    const origin = remotesResult.data.find((r) => r.name === 'origin');
+    if (!origin) {
+      setResult({ type: 'error', text: 'No se encontró remote "origin".' });
+      return;
+    }
+    const newUrl = embedTokenInUrl(origin.refs.fetch, token);
+    if (newUrl === origin.refs.fetch) {
+      setResult({ type: 'info', text: 'El remote ya tiene credenciales o no es HTTPS.' });
+      return;
+    }
+    const r = await window.easygit.gitExecWithResult(repoPath, ['remote', 'set-url', 'origin', newUrl]);
+    if (r.success) {
+      setResult({ type: 'success', text: '✔ Credenciales configuradas en el remote.' });
+      onRefresh();
+    } else {
+      setResult({ type: 'error', text: `Error: ${r.stderr}`, detail: r.stderr });
+    }
+  };
+
   const handleCreateRepo = async () => {
     if (!newRepo.name || creating) return;
     setCreating(true);
@@ -187,9 +231,12 @@ export default function GitHubPanel({ repoPath, status, githubUser, onLogin, onL
     setResult({ type: 'info', text: 'Paso 2/3: Configurando remote...' });
 
     if (repoPath) {
-      const addResult = await window.easygit.gitExecWithResult(repoPath, ['remote', 'add', 'origin', data.clone_url]);
+      const token = await window.easygit.githubGetToken();
+      const remoteUrl = token ? embedTokenInUrl(data.clone_url, token) : data.clone_url;
+
+      const addResult = await window.easygit.gitExecWithResult(repoPath, ['remote', 'add', 'origin', remoteUrl]);
       if (!addResult.success) {
-        await window.easygit.gitExecWithResult(repoPath, ['remote', 'set-url', 'origin', data.clone_url]);
+        await window.easygit.gitExecWithResult(repoPath, ['remote', 'set-url', 'origin', remoteUrl]);
       }
 
       const branch = await getCurrentBranch(repoPath);
@@ -230,9 +277,13 @@ export default function GitHubPanel({ repoPath, status, githubUser, onLogin, onL
     if (!repoPath) return;
     setResult({ type: 'info', text: 'Subiendo commits al remoto...' });
     const r = await window.easygit.gitExecWithResult(repoPath, ['push'], 120000);
-    setResult(r.success
-      ? { type: 'success', text: '✔ Push exitoso. Tus commits ya están en GitHub.' }
-      : { type: 'error', text: `Error en push: ${r.stderr}`, detail: r.stderr });
+    if (r.success) {
+      setResult({ type: 'success', text: '✔ Push exitoso. Tus commits ya están en GitHub.' });
+    } else if (r.stderr?.includes('Authentication failed') || r.stderr?.includes('could not read Username') || r.stderr?.includes('403')) {
+      setResult({ type: 'error', text: '🔴 Error de autenticación. Haz clic en ▼ y luego usa "Configurar credenciales" abajo.', detail: r.stderr });
+    } else {
+      setResult({ type: 'error', text: `Error en push: ${r.stderr}`, detail: r.stderr });
+    }
     onRefresh();
   };
 
@@ -240,9 +291,13 @@ export default function GitHubPanel({ repoPath, status, githubUser, onLogin, onL
     if (!repoPath) return;
     setResult({ type: 'info', text: 'Descargando cambios del remoto...' });
     const r = await window.easygit.gitExecWithResult(repoPath, ['pull'], 120000);
-    setResult(r.success
-      ? { type: 'success', text: '✔ Pull exitoso. Tus cambios locales están actualizados.' }
-      : { type: 'error', text: `Error en pull: ${r.stderr}`, detail: r.stderr });
+    if (r.success) {
+      setResult({ type: 'success', text: '✔ Pull exitoso. Tus cambios locales están actualizados.' });
+    } else if (r.stderr?.includes('Authentication failed') || r.stderr?.includes('could not read Username') || r.stderr?.includes('403')) {
+      setResult({ type: 'error', text: '🔴 Error de autenticación. Haz clic en ▼ y luego usa "Configurar credenciales" abajo.', detail: r.stderr });
+    } else {
+      setResult({ type: 'error', text: `Error en pull: ${r.stderr}`, detail: r.stderr });
+    }
     onRefresh();
   };
 
@@ -329,8 +384,19 @@ export default function GitHubPanel({ repoPath, status, githubUser, onLogin, onL
         <h3 className="text-xs font-bold text-terminal-dim uppercase tracking-wider mb-2">Repositorio remoto</h3>
         {remote ? (
           <div className="bg-terminal-highlight/30 border border-terminal-dim/20 rounded p-3">
-            <div className="text-xs text-terminal-green">{remote.owner}/{remote.repo}</div>
-            <div className="text-2xs text-terminal-dim mt-1">{status?.tracking}</div>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs text-terminal-green">{remote.owner}/{remote.repo}</div>
+                <div className="text-2xs text-terminal-dim mt-1">{status?.tracking}</div>
+              </div>
+              <button onClick={setupCredentialRemote}
+                className="px-2 py-1 text-2xs border border-terminal-cyan/50 text-terminal-cyan rounded hover:bg-terminal-cyan/10 transition-colors shrink-0 ml-2">
+                🔑 Configurar credenciales
+              </button>
+            </div>
+            <div className="text-2xs text-terminal-dim mt-2">
+              Si git te pide usuario/contraseña en cada push, haz clic en "Configurar credenciales" para usar tu token automáticamente.
+            </div>
           </div>
         ) : (
           <div className="text-xs text-terminal-dim bg-terminal-highlight/30 border border-terminal-dim/20 rounded p-3">
