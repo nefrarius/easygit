@@ -192,14 +192,34 @@ export default function RepoPanel({
       <div>
         <h3 className="text-xs font-bold text-terminal-dim uppercase tracking-wider mb-3">Acciones rápidas</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <ActionBtn label="Quick Commit" sub="add + commit + push" onClick={onQuickCommit} color="green" disabled={status.isClean} />
-          <ActionBtn label="Sync" sub="git pull" onClick={onSync} color="cyan" />
-          <ActionBtn label="Nueva rama" sub="checkout -b + push -u" onClick={onNewBranch} color="yellow" />
-          <ActionBtn label="Undo commit" sub="reset --soft HEAD~1" onClick={onUndoCommit} color="blue" />
+          <button onClick={onQuickCommit} disabled={status.isClean}
+            className="px-3 py-2 text-left border border-terminal-green/50 rounded text-xs text-terminal-green hover:bg-terminal-green/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            <div className="font-bold">$ Quick Commit</div>
+            <div className="text-2xs text-terminal-dim mt-0.5">Sube todos los cambios en un solo paso: añade todo, crea un commit automático y lo envía a GitHub.</div>
+          </button>
+          <button onClick={onSync}
+            className="px-3 py-2 text-left border border-terminal-cyan/50 rounded text-xs text-terminal-cyan hover:bg-terminal-cyan/10 transition-colors">
+            <div className="font-bold">$ Sync</div>
+            <div className="text-2xs text-terminal-dim mt-0.5">Descarga los últimos cambios del remoto. Hace un git pull para mantener tu copia actualizada.</div>
+          </button>
+          <button onClick={onNewBranch}
+            className="px-3 py-2 text-left border border-terminal-yellow/50 rounded text-xs text-terminal-yellow hover:bg-terminal-yellow/10 transition-colors">
+            <div className="font-bold">$ Nueva rama</div>
+            <div className="text-2xs text-terminal-dim mt-0.5">Crea una nueva rama para trabajar en una funcionalidad sin afectar a main. La sube automáticamente a GitHub.</div>
+          </button>
+          <button onClick={onUndoCommit}
+            className="px-3 py-2 text-left border border-terminal-blue/50 rounded text-xs text-terminal-blue hover:bg-terminal-blue/10 transition-colors">
+            <div className="font-bold">$ Undo commit</div>
+            <div className="text-2xs text-terminal-dim mt-0.5">Deshace el último commit pero mantiene tus cambios. Útil si te equivocaste en el mensaje o te falta algo.</div>
+          </button>
         </div>
         <div className="mt-4 pt-4 border-t border-terminal-dim/30">
           <h4 className="text-xs font-bold text-terminal-dim uppercase tracking-wider mb-2">Zona de peligro</h4>
-          <ActionBtn label="Descartar cambios" sub="git restore . (destructivo)" onClick={onDiscardChanges} color="red" disabled={status.isClean} />
+          <button onClick={onDiscardChanges} disabled={status.isClean}
+            className="px-3 py-2 text-left border border-terminal-red/50 rounded text-xs text-terminal-red hover:bg-terminal-red/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            <div className="font-bold">⚠ Descartar cambios</div>
+            <div className="text-2xs text-terminal-dim mt-0.5">Elimina todos los cambios sin commitear. 🔴 Esto es destructivo: no podrás recuperarlos. Requiere doble confirmación.</div>
+          </button>
         </div>
       </div>
 
@@ -226,23 +246,6 @@ function Badge({ status: s }) {
   const map = { M: 'M', A: 'A', D: 'D', '?': '?', ' ': ' ' };
   const colors = { M: 'text-terminal-yellow', A: 'text-terminal-green', D: 'text-terminal-red', '?': 'text-terminal-dim' };
   return <span className={`font-bold text-xs ${colors[s] || 'text-terminal-dim'}`}>[{map[s] || ' '}]</span>;
-}
-
-function ActionBtn({ label, sub, onClick, color, disabled }) {
-  const colors = {
-    green: 'border-terminal-green/50 text-terminal-green hover:bg-terminal-green/10',
-    cyan: 'border-terminal-cyan/50 text-terminal-cyan hover:bg-terminal-cyan/10',
-    yellow: 'border-terminal-yellow/50 text-terminal-yellow hover:bg-terminal-yellow/10',
-    blue: 'border-terminal-blue/50 text-terminal-blue hover:bg-terminal-blue/10',
-    red: 'border-terminal-red/50 text-terminal-red hover:bg-terminal-red/10',
-  };
-  return (
-    <button onClick={onClick} disabled={disabled}
-      className={`px-3 py-2 text-left border rounded text-xs transition-colors ${colors[color] || colors.green} ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
-      <div className="font-bold">$ {label}</div>
-      <div className="text-terminal-dim text-2xs mt-0.5">{sub}</div>
-    </button>
-  );
 }
 
 function fmtDate(d) {
